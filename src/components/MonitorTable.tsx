@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAppStore } from '../store';
 import type { CanFrameDisplay, SortField } from '../types';
 import { formatTimestamp, formatId, formatData, applyFilters, sortFrames, frameKey } from '../utils';
@@ -26,6 +26,7 @@ export default function MonitorTable() {
   const setSelectedFrameId = useAppStore((s) => s.setSelectedFrameId);
 
   const [displayFrames, setDisplayFrames] = useState<CanFrameDisplay[]>([]);
+  const [now, setNow] = useState<number>(Date.now());
   const frameCountRef = useRef(0);
 
   useEffect(() => {
@@ -36,7 +37,30 @@ export default function MonitorTable() {
     setDisplayFrames(sorted);
   }, [frames, filters, dbc, decodedSignals, sortField, sortOrder]);
 
-  const now = Date.now();
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatLastUpdate = (lastTimestamp: number): string => {
+    const diffUs = now * 1000 - lastTimestamp;
+    const diffSec = Math.max(0, diffUs / 1_000_000);
+    if (diffSec < 1) {
+      return '刚刚';
+    }
+    if (diffSec < 60) {
+      return `${diffSec.toFixed(1)}s 前`;
+    }
+    if (diffSec < 3600) {
+      return `${(diffSec / 60).toFixed(1)}m 前`;
+    }
+    if (diffSec < 86400) {
+      return `${(diffSec / 3600).toFixed(1)}h 前`;
+    }
+    return `${(diffSec / 86400).toFixed(1)}d 前`;
+  };
 
   return (
     <div className="monitor-table-container">
@@ -77,8 +101,8 @@ export default function MonitorTable() {
                   {frame.period > 0 ? (frame.period / 1000).toFixed(2) : '-'}
                 </td>
                 <td className="col-count">{frame.count}</td>
-                <td className="col-timestamp">
-                  {((now * 1000 - frame.last_timestamp) / 1000000).toFixed(1)}s 前
+                <td className="col-last-update">
+                  {formatLastUpdate(frame.last_timestamp)}
                 </td>
               </tr>
             );

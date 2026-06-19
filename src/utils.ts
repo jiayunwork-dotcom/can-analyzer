@@ -37,41 +37,50 @@ export function applyFilters(
   const enabledFilters = filters.filter((f) => f.enabled);
   if (enabledFilters.length === 0) return true;
 
-  let pass = true;
+  const whitelistFilters = enabledFilters.filter((f) => f.mode === 'whitelist');
+  const blacklistFilters = enabledFilters.filter((f) => f.mode === 'blacklist');
+  const conditionalFilters = enabledFilters.filter((f) => f.mode === 'conditional');
 
-  for (const f of enabledFilters) {
-    if (f.mode === 'whitelist') {
-      if (f.ids && !f.ids.includes(frame.id)) {
-        pass = false;
-      }
-    } else if (f.mode === 'blacklist') {
+  if (whitelistFilters.length > 0) {
+    let inWhitelist = false;
+    for (const f of whitelistFilters) {
       if (f.ids && f.ids.includes(frame.id)) {
-        pass = false;
+        inWhitelist = true;
+        break;
       }
-    } else if (f.mode === 'conditional') {
-      if (f.signal_name && f.message_id !== undefined && frame.id === f.message_id && f.op && f.value !== undefined) {
-        const signals = decodedMap[frame.id];
-        if (signals) {
-          const sig = signals.find((s) => s.name === f.signal_name);
-          if (sig) {
-            const v = sig.physical_value;
-            let condPass = false;
-            switch (f.op) {
-              case '>': condPass = v > f.value; break;
-              case '<': condPass = v < f.value; break;
-              case '>=': condPass = v >= f.value; break;
-              case '<=': condPass = v <= f.value; break;
-              case '==': condPass = v === f.value; break;
-              case '!=': condPass = v !== f.value; break;
-            }
-            if (!condPass) pass = false;
-          }
-        }
+    }
+    if (!inWhitelist) return false;
+  }
+
+  if (blacklistFilters.length > 0) {
+    for (const f of blacklistFilters) {
+      if (f.ids && f.ids.includes(frame.id)) {
+        return false;
       }
     }
   }
 
-  return pass;
+  for (const f of conditionalFilters) {
+    if (f.signal_name && f.message_id !== undefined && frame.id === f.message_id && f.op && f.value !== undefined) {
+      const signals = decodedMap[frame.id];
+      if (!signals) return false;
+      const sig = signals.find((s) => s.name === f.signal_name);
+      if (!sig) return false;
+      const v = sig.physical_value;
+      let condPass = false;
+      switch (f.op) {
+        case '>': condPass = v > f.value; break;
+        case '<': condPass = v < f.value; break;
+        case '>=': condPass = v >= f.value; break;
+        case '<=': condPass = v <= f.value; break;
+        case '==': condPass = v === f.value; break;
+        case '!=': condPass = v !== f.value; break;
+      }
+      if (!condPass) return false;
+    }
+  }
+
+  return true;
 }
 
 export function sortFrames(

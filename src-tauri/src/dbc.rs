@@ -5,7 +5,7 @@ pub fn parse_dbc(content: &str) -> DbcDatabase {
     let mut version = String::new();
     let mut messages: Vec<DbcMessage> = Vec::new();
     let mut message_signals: HashMap<u32, Vec<DbcSignal>> = HashMap::new();
-    let mut value_tables: HashMap<String, HashMap<u64, String>> = HashMap::new();
+    let mut value_tables: HashMap<(u32, String), HashMap<u64, String>> = HashMap::new();
 
     let lines: Vec<&str> = content.lines().collect();
     let mut i = 0;
@@ -39,8 +39,8 @@ pub fn parse_dbc(content: &str) -> DbcDatabase {
             message_signals.insert(msg_id, signals);
             continue;
         } else if line.starts_with("VAL_ ") {
-            if let Some((sig_key, table)) = parse_value_table(line) {
-                value_tables.insert(sig_key, table);
+            if let Some((msg_id, sig_name, table)) = parse_value_table(line) {
+                value_tables.insert((msg_id, sig_name), table);
             }
         }
 
@@ -51,7 +51,7 @@ pub fn parse_dbc(content: &str) -> DbcDatabase {
         if let Some(signals) = message_signals.get(&msg.id) {
             let mut processed_signals = signals.clone();
             for sig in &mut processed_signals {
-                let key = format!("{}_{}", msg.name, sig.name);
+                let key = (msg.id, sig.name.clone());
                 if let Some(table) = value_tables.get(&key) {
                     sig.value_table = table.clone();
                 }
@@ -198,7 +198,7 @@ fn parse_signal(line: &str) -> DbcSignal {
     }
 }
 
-fn parse_value_table(line: &str) -> Option<(String, HashMap<u64, String>)> {
+fn parse_value_table(line: &str) -> Option<(u32, String, HashMap<u64, String>)> {
     let parts: Vec<&str> = line.splitn(4, char::is_whitespace).collect();
     if parts.len() < 4 {
         return None;
@@ -241,6 +241,5 @@ fn parse_value_table(line: &str) -> Option<(String, HashMap<u64, String>)> {
         }
     }
 
-    let fake_msg_name = format!("msg_{}", msg_id);
-    Some((format!("{}_{}", fake_msg_name, sig_name), table))
+    Some((msg_id, sig_name.to_string(), table))
 }

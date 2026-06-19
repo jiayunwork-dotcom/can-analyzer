@@ -53,6 +53,9 @@ fn extract_raw_value(data: &[u8], sig: &DbcSignal) -> i64 {
     let mut raw: u64 = 0;
 
     if sig.is_little_endian {
+        // Intel / little endian: start_bit = LSB position
+        // Bit 0 = LSB of byte 0
+        // Signal extends from start_bit (LSB) to higher bit numbers (MSB)
         for i in 0..bit_len {
             let bit_pos = start_bit + i;
             let byte_idx = bit_pos / 8;
@@ -63,13 +66,16 @@ fn extract_raw_value(data: &[u8], sig: &DbcSignal) -> i64 {
             }
         }
     } else {
+        // Motorola / big endian: start_bit = MSB position
+        // DBC bit numbering: bit 0 = MSB of byte 0, bit 7 = LSB of byte 0
+        // Signal extends from start_bit (MSB) to higher bit numbers (towards LSB)
         for i in 0..bit_len {
-            let bit_pos = start_bit - i;
-            let byte_idx = 7 - (bit_pos / 8);
-            let bit_in_byte = bit_pos % 8;
-            let actual_bit = 7 - bit_in_byte;
+            // i = 0 is LSB of signal, i = bit_len - 1 is MSB
+            let dbc_bit = start_bit + (bit_len - 1 - i);
+            let byte_idx = dbc_bit / 8;
+            let bit_in_byte = 7 - (dbc_bit % 8); // DBC bit 0 = MSB = data bit 7
             if byte_idx < data.len() {
-                let bit = (data[byte_idx] >> actual_bit) & 1;
+                let bit = (data[byte_idx] >> bit_in_byte) & 1;
                 raw |= (bit as u64) << i;
             }
         }
@@ -89,6 +95,7 @@ fn insert_raw_value(data: &mut [u8], sig: &DbcSignal, value: i64) {
     let raw = (value as u64) & mask;
 
     if sig.is_little_endian {
+        // Intel / little endian
         for i in 0..bit_len {
             let bit_pos = start_bit + i;
             let byte_idx = bit_pos / 8;
@@ -99,14 +106,15 @@ fn insert_raw_value(data: &mut [u8], sig: &DbcSignal, value: i64) {
             }
         }
     } else {
+        // Motorola / big endian
         for i in 0..bit_len {
-            let bit_pos = start_bit - i;
-            let byte_idx = 7 - (bit_pos / 8);
-            let bit_in_byte = bit_pos % 8;
-            let actual_bit = 7 - bit_in_byte;
+            // i = 0 is LSB of signal, i = bit_len - 1 is MSB
+            let dbc_bit = start_bit + (bit_len - 1 - i);
+            let byte_idx = dbc_bit / 8;
+            let bit_in_byte = 7 - (dbc_bit % 8); // DBC bit 0 = MSB = data bit 7
             if byte_idx < data.len() {
                 let bit = ((raw >> i) & 1) as u8;
-                data[byte_idx] = (data[byte_idx] & !(1u8 << actual_bit)) | (bit << actual_bit);
+                data[byte_idx] = (data[byte_idx] & !(1u8 << bit_in_byte)) | (bit << bit_in_byte);
             }
         }
     }
