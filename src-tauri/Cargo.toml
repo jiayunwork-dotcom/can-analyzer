@@ -1,0 +1,33 @@
+[package]
+name = "can-analyzer"
+version = "0.1.0"
+description = "A CAN bus analyzer and simulator"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "can_analyzer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", default-features = false, features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = [] }
+tauri-plugin-dialog = "2.0"
+tauri-plugin-fs = "2.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+parking_lot = "0.12"
+rand = "0.8"
+log = "0.4"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[package.metadata.tauri]
+bundle = false
+
+[package.metadata.tauri-winres]
+enabled = "false"
