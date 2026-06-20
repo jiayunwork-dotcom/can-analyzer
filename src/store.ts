@@ -158,7 +158,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       traceSignals: state.traceSignals.map((t) => {
         if (t.message_id === msgId && t.signal_name === signalName) {
-          const cutoff = timestamp - 30000;
+          const cutoff = timestamp - 30_000_000; // 30秒 = 30,000,000微秒
           const newPoints = [...t.points.filter((p) => p.timestamp >= cutoff), { timestamp, value }];
           return { ...t, points: newPoints };
         }
