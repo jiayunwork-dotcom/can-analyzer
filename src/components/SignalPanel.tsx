@@ -1,5 +1,5 @@
 import { useAppStore } from '../store';
-import type { DecodedSignal } from '../types';
+import type { DecodedSignal, DbcSignal } from '../types';
 
 export default function SignalPanel() {
   const selectedFrameId = useAppStore((s) => s.selectedFrameId);
@@ -22,6 +22,15 @@ export default function SignalPanel() {
 
   const isTraced = (sigName: string) =>
     traceSignals.some((t) => t.message_id === frame.id && t.signal_name === sigName);
+
+  const getDbcSignal = (sigName: string): DbcSignal | undefined =>
+    msg?.signals.find((s) => s.name === sigName);
+
+  const isOutOfRange = (sig: DecodedSignal): boolean => {
+    const dbcSig = getDbcSignal(sig.name);
+    if (!dbcSig) return false;
+    return sig.physical_value < dbcSig.min_value || sig.physical_value > dbcSig.max_value;
+  };
 
   return (
     <div className="signal-panel">
@@ -46,16 +55,25 @@ export default function SignalPanel() {
       <div className="signal-list">
         {signals.map((sig) => {
           const traced = isTraced(sig.name);
+          const outOfRange = isOutOfRange(sig);
+          const dbcSig = getDbcSignal(sig.name);
           return (
             <div
               key={sig.name}
-              className="signal-item"
+              className={`signal-item ${outOfRange ? 'signal-item-alarm' : ''}`}
               onClick={() => traced ? removeTraceSignal(frame.id, sig.name) : addTraceSignal(frame.id, sig.name)}
               style={{ cursor: 'pointer', opacity: traced ? 1 : 0.85 }}
               title={traced ? '点击从图表移除' : '点击添加到图表追踪'}
             >
-              <div className="signal-name">{sig.name}</div>
-              <div className="signal-value">
+              <div className="signal-name">
+                {sig.name}
+                {outOfRange && (
+                  <span className="signal-alarm-icon" title={`超出范围 [${dbcSig?.min_value}, ${dbcSig?.max_value}]`}>
+                    ⚠
+                  </span>
+                )}
+              </div>
+              <div className={`signal-value ${outOfRange ? 'signal-value-alarm' : ''}`}>
                 {sig.enum_label ?? formatNumber(sig.physical_value)}
                 {!sig.enum_label && sig.unit && <span className="signal-unit">{sig.unit}</span>}
               </div>

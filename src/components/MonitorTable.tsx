@@ -3,7 +3,7 @@ import { useAppStore } from '../store';
 import type { CanFrameDisplay, SortField } from '../types';
 import { formatTimestamp, formatId, formatData, applyFilters, sortFrames, frameKey } from '../utils';
 
-const COLUMNS: { key: SortField | 'timestamp' | 'direction' | 'dlc' | 'data' | 'count'; label: string; sortable: boolean }[] = [
+const COLUMNS: { key: SortField | 'timestamp' | 'direction' | 'dlc' | 'data' | 'count' | 'frame_loss'; label: string; sortable: boolean }[] = [
   { key: 'timestamp', label: '时间戳', sortable: false },
   { key: 'id', label: 'ID', sortable: true },
   { key: 'direction', label: '方向', sortable: false },
@@ -12,6 +12,7 @@ const COLUMNS: { key: SortField | 'timestamp' | 'direction' | 'dlc' | 'data' | '
   { key: 'period', label: '周期(ms)', sortable: true },
   { key: 'count', label: '计数', sortable: true },
   { key: 'last_timestamp', label: '最后更新', sortable: true },
+  { key: 'frame_loss', label: '丢帧检测', sortable: false },
 ];
 
 export default function MonitorTable() {
@@ -24,6 +25,8 @@ export default function MonitorTable() {
   const setSort = useAppStore((s) => s.setSort);
   const selectedFrameId = useAppStore((s) => s.selectedFrameId);
   const setSelectedFrameId = useAppStore((s) => s.setSelectedFrameId);
+  const frameLossMap = useAppStore((s) => s.frameLossMap);
+  const clearFrameLoss = useAppStore((s) => s.clearFrameLoss);
 
   const [displayFrames, setDisplayFrames] = useState<CanFrameDisplay[]>([]);
   const [now, setNow] = useState<number>(Date.now());
@@ -62,6 +65,25 @@ export default function MonitorTable() {
     return `${(diffSec / 86400).toFixed(1)}d 前`;
   };
 
+  const renderFrameLoss = (frame: CanFrameDisplay) => {
+    const key = frameKey(frame.id, frame.is_extended);
+    const lossInfo = frameLossMap[key];
+    if (!lossInfo || lossInfo.expected_cycle_ms === 0) {
+      return <span style={{ color: '#666' }}>-</span>;
+    }
+    if (lossInfo.is_loss || lossInfo.loss_count > 0) {
+      return (
+        <span className="frame-loss-badge">
+          丢帧
+          {lossInfo.loss_count > 0 && (
+            <span className="frame-loss-count">({lossInfo.loss_count})</span>
+          )}
+        </span>
+      );
+    }
+    return <span style={{ color: '#4ec9b0' }}>正常</span>;
+  };
+
   return (
     <div className="monitor-table-container">
       <table className="monitor-table">
@@ -78,6 +100,18 @@ export default function MonitorTable() {
                 )}
               </th>
             ))}
+            <th>
+              <button
+                className="btn btn-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearFrameLoss();
+                }}
+                title="清除丢帧计数"
+              >
+                归零
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -104,6 +138,10 @@ export default function MonitorTable() {
                 <td className="col-last-update">
                   {formatLastUpdate(frame.last_timestamp)}
                 </td>
+                <td className="col-frame-loss">
+                  {renderFrameLoss(frame)}
+                </td>
+                <td></td>
               </tr>
             );
           })}

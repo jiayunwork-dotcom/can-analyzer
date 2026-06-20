@@ -6,6 +6,7 @@ pub fn parse_dbc(content: &str) -> DbcDatabase {
     let mut messages: Vec<DbcMessage> = Vec::new();
     let mut message_signals: HashMap<u32, Vec<DbcSignal>> = HashMap::new();
     let mut value_tables: HashMap<(u32, String), HashMap<u64, String>> = HashMap::new();
+    let mut cycle_times: HashMap<u32, u64> = HashMap::new();
 
     let lines: Vec<&str> = content.lines().collect();
     let mut i = 0;
@@ -42,6 +43,10 @@ pub fn parse_dbc(content: &str) -> DbcDatabase {
             if let Some((msg_id, sig_name, table)) = parse_value_table(line) {
                 value_tables.insert((msg_id, sig_name), table);
             }
+        } else if line.starts_with("BA_ ") {
+            if let Some((msg_id, cycle_ms)) = parse_cycle_time(line) {
+                cycle_times.insert(msg_id, cycle_ms);
+            }
         }
 
         i += 1;
@@ -61,6 +66,9 @@ pub fn parse_dbc(content: &str) -> DbcDatabase {
                 }
             }
             msg.signals = processed_signals;
+        }
+        if let Some(ct) = cycle_times.get(&msg.id) {
+            msg.cycle_time_ms = Some(*ct);
         }
     }
 
@@ -86,6 +94,7 @@ fn parse_message(line: &str) -> (DbcMessage, u32) {
             signals: Vec::new(),
             has_multiplexor: false,
             multiplexor_signal_name: None,
+            cycle_time_ms: None,
         },
         id,
     )
@@ -242,4 +251,24 @@ fn parse_value_table(line: &str) -> Option<(u32, String, HashMap<u64, String>)> 
     }
 
     Some((msg_id, sig_name.to_string(), table))
+}
+
+fn parse_cycle_time(line: &str) -> Option<(u32, u64)> {
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 5 {
+        return None;
+    }
+    if parts[0] != "BA_" {
+        return None;
+    }
+    let attr_name = parts[1].trim_matches('"');
+    if attr_name != "GenMsgCycleTime" {
+        return None;
+    }
+    if parts[2] != "BO_" {
+        return None;
+    }
+    let msg_id: u32 = parts[3].parse().ok()?;
+    let cycle_ms: u64 = parts[4].trim_end_matches(';').parse().ok()?;
+    Some((msg_id, cycle_ms))
 }

@@ -78,6 +78,7 @@ pub struct DbcMessage {
     pub signals: Vec<DbcSignal>,
     pub has_multiplexor: bool,
     pub multiplexor_signal_name: Option<String>,
+    pub cycle_time_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

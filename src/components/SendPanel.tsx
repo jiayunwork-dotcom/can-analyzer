@@ -72,6 +72,15 @@ export default function SendPanel() {
     }
   };
 
+  const isSignalOutOfRange = (sigName: string): boolean => {
+    if (!selectedMsg) return false;
+    const sig = selectedMsg.signals.find((s) => s.name === sigName);
+    if (!sig) return false;
+    const val = signalValues[sigName];
+    if (val === undefined) return false;
+    return val < sig.min_value || val > sig.max_value;
+  };
+
   return (
     <div className="panel-section">
       <div className="panel-section-header" onClick={() => setCollapsed(!collapsed)}>
@@ -175,21 +184,33 @@ export default function SendPanel() {
 
                     {selectedMsg && (
                       <>
-                        {selectedMsg.signals.map((sig) => (
-                          <div className="form-group" key={sig.name}>
-                            <label>
-                              {sig.name} [{sig.min_value}~{sig.max_value}] {sig.unit}
-                            </label>
-                            <input
-                              type="number"
-                              step={sig.factor < 1 ? sig.factor : 1}
-                              value={signalValues[sig.name] ?? sig.offset}
-                              onChange={(e) =>
-                                setSignalValues({ ...signalValues, [sig.name]: parseFloat(e.target.value) || 0 })
-                              }
-                            />
-                          </div>
-                        ))}
+                        {selectedMsg.signals.map((sig) => {
+                          const outOfRange = isSignalOutOfRange(sig.name);
+                          const currentVal = signalValues[sig.name];
+                          return (
+                            <div className="form-group" key={sig.name}>
+                              <label>
+                                {sig.name} [{sig.min_value}~{sig.max_value}] {sig.unit}
+                              </label>
+                              <div className="signal-edit-row">
+                                <input
+                                  type="number"
+                                  step={sig.factor < 1 ? sig.factor : 1}
+                                  className={outOfRange ? 'input-out-of-range' : ''}
+                                  value={currentVal ?? sig.offset}
+                                  onChange={(e) =>
+                                    setSignalValues({ ...signalValues, [sig.name]: parseFloat(e.target.value) || 0 })
+                                  }
+                                />
+                                {outOfRange && (
+                                  <span className="range-warning-hint">
+                                    允许: [{sig.min_value}, {sig.max_value}]
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
 
                         <div className="form-row">
                           <div className="form-group">

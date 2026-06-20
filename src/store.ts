@@ -11,6 +11,8 @@ import type {
   RecordedFrame,
   PlaybackState,
   DecodedSignal,
+  AlarmRecord,
+  FrameLossInfo,
 } from './types';
 
 interface AppState {
@@ -32,6 +34,8 @@ interface AppState {
   playbackState: PlaybackState;
   playbackSpeed: number;
   playbackPosition: number;
+  alarms: AlarmRecord[];
+  frameLossMap: Record<string, FrameLossInfo>;
 
   setSimRunning: (v: boolean) => void;
   setSimConfigs: (v: SimMessageConfig[]) => void;
@@ -52,6 +56,10 @@ interface AppState {
   setPlaybackState: (state: PlaybackState) => void;
   setPlaybackSpeed: (speed: number) => void;
   setPlaybackPosition: (pos: number) => void;
+  addAlarm: (alarm: AlarmRecord) => void;
+  clearAlarms: () => void;
+  updateFrameLoss: (key: string, info: Partial<FrameLossInfo>) => void;
+  clearFrameLoss: () => void;
 }
 
 const TRACE_COLORS = ['#4ec9b0', '#ce9178', '#569cd6', '#c586c0', '#dcdcaa', '#b5cea8'];
@@ -75,6 +83,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   playbackState: 'stopped',
   playbackSpeed: 1,
   playbackPosition: 0,
+  alarms: [],
+  frameLossMap: {},
 
   setSimRunning: (v) => set({ simRunning: v }),
   setSimConfigs: (v) => set({ simConfigs: v }),
@@ -111,7 +121,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { frames: newFrames, frameOrder: newOrder };
     }),
 
-  clearFrames: () => set({ frames: {}, frameOrder: [], selectedFrameId: null, decodedSignals: {} }),
+  clearFrames: () => set({ frames: {}, frameOrder: [], selectedFrameId: null, decodedSignals: {}, frameLossMap: {} }),
 
   setSelectedFrameId: (id) => set({ selectedFrameId: id }),
   setDecodedSignals: (msgId, signals) =>
@@ -171,4 +181,31 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPlaybackState: (state) => set({ playbackState: state }),
   setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
   setPlaybackPosition: (pos) => set({ playbackPosition: pos }),
+
+  addAlarm: (alarm) =>
+    set((state) => {
+      const alarms = [...state.alarms, alarm].slice(-20);
+      return { alarms };
+    }),
+
+  clearAlarms: () => set({ alarms: [] }),
+
+  updateFrameLoss: (key, info) =>
+    set((state) => {
+      const existing = state.frameLossMap[key] || {
+        message_id: 0,
+        is_extended: false,
+        expected_cycle_ms: 0,
+        loss_count: 0,
+        is_loss: false,
+      };
+      return {
+        frameLossMap: {
+          ...state.frameLossMap,
+          [key]: { ...existing, ...info },
+        },
+      };
+    }),
+
+  clearFrameLoss: () => set({ frameLossMap: {} }),
 }));

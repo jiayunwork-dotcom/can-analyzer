@@ -57,6 +57,7 @@ export interface DbcMessage {
   signals: DbcSignal[];
   has_multiplexor: boolean;
   multiplexor_signal_name: string | null;
+  cycle_time_ms: number | null;
 }
 
 export interface DbcDatabase {
@@ -118,3 +119,24 @@ export interface RecordedFrame {
 }
 
 export type PlaybackState = 'stopped' | 'playing' | 'paused';
+
+export type AlarmDirection = 'above_max' | 'below_min';
+
+export interface AlarmRecord {
+  id: string;
+  timestamp: number;
+  signal_name: string;
+  current_value: number;
+  direction: AlarmDirection;
+  message_id: number;
+  min_value: number;
+  max_value: number;
+}
+
+export interface FrameLossInfo {
+  message_id: number;
+  is_extended: boolean;
+  expected_cycle_ms: number;
+  loss_count: number;
+  is_loss: boolean;
+}
