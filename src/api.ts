@@ -7,6 +7,7 @@ import type {
   BusStats,
   DecodedSignal,
   CompareResult,
+  BatchCompareResult,
 } from './types';
 
 export const canApi = {
@@ -46,6 +47,9 @@ export const canApi = {
 
   compareRecordings: (basePath: string, comparePath: string, thresholdPercent: number) =>
     invoke<CompareResult>('compare_recordings', { basePath, comparePath, thresholdPercent }),
+
+  compareRecordingsBatch: (basePath: string, comparePaths: string[], thresholdPercent: number) =>
+    invoke<BatchCompareResult>('compare_recordings_batch', { basePath, comparePaths, thresholdPercent }),
 };
 
 export const subscribeEvents = async (

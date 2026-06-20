@@ -201,3 +201,30 @@ export interface CompareResult {
   only_in_compare_ids: number[];
   messages: MessageCompareResult[];
 }
+
+export interface CompareFileError {
+  file_name: string;
+  file_path: string;
+  error_message: string;
+}
+
+export type TrendDirection = 'improving' | 'worsening' | 'fluctuating' | 'insufficient_data';
+
+export interface TrendResult {
+  direction: TrendDirection;
+  slope: number;
+  r_squared: number;
+}
+
+export interface SignalTrendInfo {
+  message_id: number;
+  signal_name: string;
+  trend: TrendResult;
+}
+
+export interface BatchCompareResult {
+  base_file: CompareFileInfo;
+  compare_results: CompareResult[];
+  failed_files: CompareFileError[];
+  trends: SignalTrendInfo[];
+}

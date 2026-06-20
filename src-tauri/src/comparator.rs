@@ -3,6 +3,164 @@ use crate::recording;
 use crate::types::*;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+pub fn compare_recordings_batch(
+    base_path: &str,
+    compare_paths: &[String],
+    dbc_data: &Option<DbcDatabase>,
+    threshold_percent: f64,
+) -> Result<BatchCompareResult, String> {
+    let base_frames = recording::parse_asc_file(base_path)
+        .map_err(|e| format!("Failed to parse base file: {}", e))?;
+
+    let base_file_name = extract_file_name(base_path);
+    let base_file_info = build_file_info(&base_file_name, &base_frames);
+
+    let mut compare_results: Vec<CompareResult> = Vec::new();
+    let mut failed_files: Vec<CompareFileError> = Vec::new();
+
+    for compare_path in compare_paths {
+        let compare_file_name = extract_file_name(compare_path);
+        match recording::parse_asc_file(compare_path) {
+            Ok(_) => {
+                match compare_recordings(base_path, compare_path, dbc_data, threshold_percent) {
+                    Ok(result) => compare_results.push(result),
+                    Err(e) => failed_files.push(CompareFileError {
+                        file_name: compare_file_name,
+                        file_path: compare_path.clone(),
+                        error_message: e,
+                    }),
+                }
+            }
+            Err(e) => failed_files.push(CompareFileError {
+                file_name: compare_file_name,
+                file_path: compare_path.clone(),
+                error_message: format!("Failed to parse file: {}", e),
+            }),
+        }
+    }
+
+    let trends = compute_trends(&compare_results);
+
+    Ok(BatchCompareResult {
+        base_file: base_file_info,
+        compare_results,
+        failed_files,
+        trends,
+    })
+}
+
+fn compute_trends(compare_results: &[CompareResult]) -> Vec<SignalTrendInfo> {
+    let mut trends: Vec<SignalTrendInfo> = Vec::new();
+
+    if compare_results.len() < 3 {
+        return trends;
+    }
+
+    let mut signal_avg_diffs: HashMap<(u32, String), (Vec<f64>, f64)> = HashMap::new();
+
+    for (_, result) in compare_results.iter().enumerate() {
+        for msg in &result.messages {
+            for sig in &msg.signal_diffs {
+                let key = (msg.message_id, sig.signal_name.clone());
+                let entry = signal_avg_diffs
+                    .entry(key)
+                    .or_insert_with(|| (Vec::new(), sig.signal_range));
+                entry.0.push(sig.avg_diff);
+            }
+        }
+    }
+
+    for ((message_id, signal_name), (avg_diffs, signal_range)) in signal_avg_diffs {
+        let trend = if avg_diffs.len() < 3 {
+            TrendResult {
+                direction: TrendDirection::InsufficientData,
+                slope: 0.0,
+                r_squared: 0.0,
+            }
+        } else {
+            linear_fit_trend(&avg_diffs, signal_range)
+        };
+
+        trends.push(SignalTrendInfo {
+            message_id,
+            signal_name,
+            trend,
+        });
+    }
+
+    trends
+}
+
+fn linear_fit_trend(data: &[f64], signal_range: f64) -> TrendResult {
+    let n = data.len() as f64;
+
+    let mut sum_x = 0.0;
+    let mut sum_y = 0.0;
+    let mut sum_xy = 0.0;
+    let mut sum_x2 = 0.0;
+    let mut sum_y2 = 0.0;
+
+    for (i, &y) in data.iter().enumerate() {
+        let x = i as f64;
+        sum_x += x;
+        sum_y += y;
+        sum_xy += x * y;
+        sum_x2 += x * x;
+        sum_y2 += y * y;
+    }
+
+    let mean_x = sum_x / n;
+    let mean_y = sum_y / n;
+
+    let numerator = n * sum_xy - sum_x * sum_y;
+    let denominator = n * sum_x2 - sum_x * sum_x;
+
+    if denominator.abs() < f64::EPSILON {
+        return TrendResult {
+            direction: TrendDirection::Fluctuating,
+            slope: 0.0,
+            r_squared: 0.0,
+        };
+    }
+
+    let slope = numerator / denominator;
+    let intercept = mean_y - slope * mean_x;
+
+    let mut ss_res = 0.0;
+    let mut ss_tot = 0.0;
+
+    for (i, &y) in data.iter().enumerate() {
+        let x = i as f64;
+        let predicted = slope * x + intercept;
+        ss_res += (y - predicted).powi(2);
+        ss_tot += (y - mean_y).powi(2);
+    }
+
+    let r_squared = if ss_tot.abs() < f64::EPSILON {
+        1.0
+    } else {
+        1.0 - ss_res / ss_tot
+    };
+
+    let slope_threshold = signal_range.abs() * 0.01;
+
+    let direction = if slope.abs() > slope_threshold && r_squared > 0.6 {
+        if slope > 0.0 {
+            TrendDirection::Worsening
+        } else {
+            TrendDirection::Improving
+        }
+    } else {
+        TrendDirection::Fluctuating
+    };
+
+    TrendResult {
+        direction,
+        slope,
+        r_squared,
+    }
+}
+
 pub fn compare_recordings(
     base_path: &str,
     compare_path: &str,

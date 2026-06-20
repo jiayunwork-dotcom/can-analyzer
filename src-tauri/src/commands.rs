@@ -370,3 +370,21 @@ pub fn compare_recordings(
     drop(dbc_guard);
     crate::comparator::compare_recordings(&base_path, &compare_path, &dbc_data, threshold_percent)
 }
+
+#[tauri::command]
+pub fn compare_recordings_batch(
+    state: State<'_, AppState>,
+    base_path: String,
+    compare_paths: Vec<String>,
+    threshold_percent: f64,
+) -> Result<BatchCompareResult, String> {
+    let dbc_guard = state.inner.dbc.lock();
+    let dbc_data = dbc_guard.clone();
+    drop(dbc_guard);
+    crate::comparator::compare_recordings_batch(
+        &base_path,
+        &compare_paths,
+        &dbc_data,
+        threshold_percent,
+    )
+}

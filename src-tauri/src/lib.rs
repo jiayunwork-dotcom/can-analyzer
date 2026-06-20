@@ -39,6 +39,7 @@ pub fn run() {
             commands::is_recording,
             commands::load_recording,
             commands::compare_recordings,
+            commands::compare_recordings_batch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

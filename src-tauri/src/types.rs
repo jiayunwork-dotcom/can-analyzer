@@ -188,3 +188,41 @@ pub struct CompareResult {
     pub only_in_compare_ids: Vec<u32>,
     pub messages: Vec<MessageCompareResult>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompareFileError {
+    pub file_name: String,
+    pub file_path: String,
+    pub error_message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TrendDirection {
+    Improving,
+    Worsening,
+    Fluctuating,
+    InsufficientData,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrendResult {
+    pub direction: TrendDirection,
+    pub slope: f64,
+    pub r_squared: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalTrendInfo {
+    pub message_id: u32,
+    pub signal_name: String,
+    pub trend: TrendResult,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchCompareResult {
+    pub base_file: CompareFileInfo,
+    pub compare_results: Vec<CompareResult>,
+    pub failed_files: Vec<CompareFileError>,
+    pub trends: Vec<SignalTrendInfo>,
+}
