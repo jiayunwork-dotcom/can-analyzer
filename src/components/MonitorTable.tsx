@@ -71,13 +71,20 @@ export default function MonitorTable() {
     if (!lossInfo || lossInfo.expected_cycle_ms === 0) {
       return <span style={{ color: '#666' }}>-</span>;
     }
-    if (lossInfo.is_loss || lossInfo.loss_count > 0) {
+    if (lossInfo.is_loss) {
       return (
-        <span className="frame-loss-badge">
+        <span className="frame-loss-badge frame-loss-badge-current">
           丢帧
           {lossInfo.loss_count > 0 && (
             <span className="frame-loss-count">({lossInfo.loss_count})</span>
           )}
+        </span>
+      );
+    }
+    if (lossInfo.loss_count > 0) {
+      return (
+        <span className="frame-loss-badge frame-loss-badge-history">
+          正常({lossInfo.loss_count})
         </span>
       );
     }

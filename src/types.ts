@@ -129,6 +129,7 @@ export interface AlarmRecord {
   current_value: number;
   direction: AlarmDirection;
   message_id: number;
+  is_extended: boolean;
   min_value: number;
   max_value: number;
 }

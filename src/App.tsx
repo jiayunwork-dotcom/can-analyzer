@@ -29,7 +29,7 @@ function AlarmLogBar() {
   if (alarms.length === 0) return null;
 
   const handleAlarmClick = (alarm: AlarmRecord) => {
-    const key = frameKey(alarm.message_id, false);
+    const key = frameKey(alarm.message_id, alarm.is_extended);
     setSelectedFrameId(key);
   };
 
@@ -121,6 +121,7 @@ export default function App() {
                 current_value: sig.physical_value,
                 direction: sig.physical_value > dbcSig.max_value ? 'above_max' : 'below_min',
                 message_id: frame.id,
+                is_extended: frame.is_extended,
                 min_value: dbcSig.min_value,
                 max_value: dbcSig.max_value,
               };

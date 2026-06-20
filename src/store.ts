@@ -184,6 +184,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   addAlarm: (alarm) =>
     set((state) => {
+      const fiveSecondsAgo = Date.now() - 5000;
+      const duplicate = state.alarms.find(
+        (a) =>
+          a.signal_name === alarm.signal_name &&
+          a.message_id === alarm.message_id &&
+          a.timestamp >= fiveSecondsAgo
+      );
+      if (duplicate) return state;
       const alarms = [...state.alarms, alarm].slice(-20);
       return { alarms };
     }),
