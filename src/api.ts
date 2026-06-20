@@ -6,6 +6,7 @@ import type {
   RecordedFrame,
   BusStats,
   DecodedSignal,
+  CompareResult,
 } from './types';
 
 export const canApi = {
@@ -42,6 +43,9 @@ export const canApi = {
   isRecording: () => invoke<boolean>('is_recording'),
 
   loadRecording: (filePath: string) => invoke<RecordedFrame[]>('load_recording', { filePath }),
+
+  compareRecordings: (basePath: string, comparePath: string, thresholdPercent: number) =>
+    invoke<CompareResult>('compare_recordings', { basePath, comparePath, thresholdPercent }),
 };
 
 export const subscribeEvents = async (

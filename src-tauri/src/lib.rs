@@ -4,6 +4,7 @@ pub mod dbc;
 pub mod simulator;
 pub mod storage;
 pub mod recording;
+pub mod comparator;
 pub mod commands;
 
 pub use commands::AppState;
@@ -37,6 +38,7 @@ pub fn run() {
             commands::stop_recording,
             commands::is_recording,
             commands::load_recording,
+            commands::compare_recordings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

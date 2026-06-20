@@ -12,6 +12,7 @@ import SendPanel from './components/SendPanel';
 import StatsPanel from './components/StatsPanel';
 import ChartPanel from './components/ChartPanel';
 import PlaybackPanel from './components/PlaybackPanel';
+import ComparatorPanel from './components/ComparatorPanel';
 import { frameKey } from './utils';
 
 function AlarmLogBar() {
@@ -220,6 +221,7 @@ export default function App() {
           <SendPanel />
           <StatsPanel />
           <PlaybackPanel />
+          <ComparatorPanel />
         </div>
       </div>
       <AlarmLogBar />

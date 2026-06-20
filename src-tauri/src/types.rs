@@ -114,3 +114,77 @@ pub struct RecordedFrame {
     pub dlc: u8,
     pub data: Vec<u8>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompareFileInfo {
+    pub file_name: String,
+    pub total_frames: u64,
+    pub time_span_us: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalDiffEntry {
+    pub base_timestamp: u64,
+    pub base_value: f64,
+    pub compare_value: f64,
+    pub diff: f64,
+    pub diff_percent: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalDiffSummary {
+    pub signal_name: String,
+    pub unit: String,
+    pub signal_range: f64,
+    pub max_diff: f64,
+    pub avg_diff: f64,
+    pub std_diff: f64,
+    pub over_threshold_ratio: f64,
+    pub matched_count: u64,
+    pub no_match_count: u64,
+    pub diff_entries: Vec<SignalDiffEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ByteDiffEntry {
+    pub base_timestamp: u64,
+    pub byte_index: u8,
+    pub base_value: u8,
+    pub compare_value: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ByteDiffSummary {
+    pub byte_index: u8,
+    pub diff_count: u64,
+    pub total_matched: u64,
+    pub diff_ratio: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageCompareResult {
+    pub message_id: u32,
+    pub message_name: String,
+    pub is_extended: bool,
+    pub base_frame_count: u64,
+    pub compare_frame_count: u64,
+    pub matched_frame_count: u64,
+    pub no_match_count: u64,
+    pub has_dbc: bool,
+    pub signal_diffs: Vec<SignalDiffSummary>,
+    pub byte_diffs: Vec<ByteDiffSummary>,
+    pub only_in_base: bool,
+    pub only_in_compare: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompareResult {
+    pub base_file: CompareFileInfo,
+    pub compare_file: CompareFileInfo,
+    pub frame_count_diff: i64,
+    pub time_span_diff_us: i64,
+    pub common_id_count: u32,
+    pub only_in_base_ids: Vec<u32>,
+    pub only_in_compare_ids: Vec<u32>,
+    pub messages: Vec<MessageCompareResult>,
+}

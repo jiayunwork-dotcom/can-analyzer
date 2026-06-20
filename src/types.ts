@@ -141,3 +141,63 @@ export interface FrameLossInfo {
   loss_count: number;
   is_loss: boolean;
 }
+
+export interface CompareFileInfo {
+  file_name: string;
+  total_frames: number;
+  time_span_us: number;
+}
+
+export interface SignalDiffEntry {
+  base_timestamp: number;
+  base_value: number;
+  compare_value: number;
+  diff: number;
+  diff_percent: number;
+}
+
+export interface SignalDiffSummary {
+  signal_name: string;
+  unit: string;
+  signal_range: number;
+  max_diff: number;
+  avg_diff: number;
+  std_diff: number;
+  over_threshold_ratio: number;
+  matched_count: number;
+  no_match_count: number;
+  diff_entries: SignalDiffEntry[];
+}
+
+export interface ByteDiffSummary {
+  byte_index: number;
+  diff_count: number;
+  total_matched: number;
+  diff_ratio: number;
+}
+
+export interface MessageCompareResult {
+  message_id: number;
+  message_name: string;
+  is_extended: boolean;
+  base_frame_count: number;
+  compare_frame_count: number;
+  matched_frame_count: number;
+  no_match_count: number;
+  has_dbc: boolean;
+  signal_diffs: SignalDiffSummary[];
+  byte_diffs: ByteDiffSummary[];
+  only_in_base: boolean;
+  only_in_compare: boolean;
+}
+
+export interface CompareResult {
+  base_file: CompareFileInfo;
+  compare_file: CompareFileInfo;
+  frame_count_diff: number;
+  time_span_diff_us: number;
+  common_id_count: number;
+  only_in_base_ids: number[];
+  only_in_compare_ids: number[];
+  messages: MessageCompareResult[];
+}

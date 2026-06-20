@@ -357,3 +357,16 @@ pub fn is_recording(state: State<'_, AppState>) -> bool {
 pub fn load_recording(file_path: String) -> Result<Vec<RecordedFrame>, String> {
     crate::recording::parse_asc_file(&file_path).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn compare_recordings(
+    state: State<'_, AppState>,
+    base_path: String,
+    compare_path: String,
+    threshold_percent: f64,
+) -> Result<CompareResult, String> {
+    let dbc_guard = state.inner.dbc.lock();
+    let dbc_data = dbc_guard.clone();
+    drop(dbc_guard);
+    crate::comparator::compare_recordings(&base_path, &compare_path, &dbc_data, threshold_percent)
+}
