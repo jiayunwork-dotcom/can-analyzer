@@ -11,8 +11,8 @@ pub fn start_recording(path: &str) -> std::io::Result<File> {
     Ok(file)
 }
 
-pub fn write_frame(file: &mut File, frame: &CanFrame, _channel: u8) -> std::io::Result<()> {
-    let timestamp_sec = (frame.timestamp as f64) / 1_000_000.0;
+pub fn write_frame(file: &mut File, frame: &CanFrame, timestamp_us: u64, _channel: u8) -> std::io::Result<()> {
+    let timestamp_sec = (timestamp_us as f64) / 1_000_000.0;
     let dir = if frame.is_tx { "Tx" } else { "Rx" };
     let id_hex = if frame.is_extended {
         format!("{:08X}x", frame.id)

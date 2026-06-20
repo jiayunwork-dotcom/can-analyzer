@@ -26,6 +26,7 @@ pub struct AppStateInner {
     pub stats_tracker: Mutex<StatsTracker>,
     pub dbc: Mutex<Option<DbcDatabase>>,
     pub recording_file: Mutex<Option<File>>,
+    pub recording_start: Mutex<Option<u64>>,
     pub periodic_sends: Mutex<PeriodicSendState>,
 }
 
@@ -44,6 +45,7 @@ impl AppState {
                 stats_tracker: Mutex::new(StatsTracker::new()),
                 dbc: Mutex::new(None),
                 recording_file: Mutex::new(None),
+                recording_start: Mutex::new(None),
                 periodic_sends: Mutex::new(PeriodicSendState::default()),
             }),
         }
@@ -65,7 +67,10 @@ fn process_incoming_frame(state: &AppState, app_handle: &tauri::AppHandle, frame
     state.inner.stats_tracker.lock().record_frame(frame_clone.id, frame_clone.timestamp);
 
     if let Some(file) = state.inner.recording_file.lock().as_mut() {
-        let _ = crate::recording::write_frame(file, &frame_clone, 1);
+        let mut start = state.inner.recording_start.lock();
+        let base = start.get_or_insert(frame_clone.timestamp);
+        let relative_ts = frame_clone.timestamp.saturating_sub(*base);
+        let _ = crate::recording::write_frame(file, &frame_clone, relative_ts, 1);
     }
 
     let _ = app_handle.emit("can-frame", frame_clone);
@@ -332,12 +337,14 @@ pub fn reset_stats(state: State<'_, AppState>) -> Result<(), String> {
 pub fn start_recording(state: State<'_, AppState>, file_path: String) -> Result<(), String> {
     let file = crate::recording::start_recording(&file_path).map_err(|e| e.to_string())?;
     *state.inner.recording_file.lock() = Some(file);
+    *state.inner.recording_start.lock() = None;
     Ok(())
 }
 
 #[tauri::command]
 pub fn stop_recording(state: State<'_, AppState>) -> Result<(), String> {
     *state.inner.recording_file.lock() = None;
+    *state.inner.recording_start.lock() = None;
     Ok(())
 }
 

@@ -54,7 +54,7 @@ fn extract_raw_value(data: &[u8], sig: &DbcSignal) -> i64 {
 
     if sig.is_little_endian {
         // Intel / little endian: start_bit = LSB position
-        // Bit 0 = LSB of byte 0
+        // Bit numbering: bit N = byte (N/8) bit (N%8), bit 0 = LSB of byte
         // Signal extends from start_bit (LSB) to higher bit numbers (MSB)
         for i in 0..bit_len {
             let bit_pos = start_bit + i;
@@ -67,16 +67,34 @@ fn extract_raw_value(data: &[u8], sig: &DbcSignal) -> i64 {
         }
     } else {
         // Motorola / big endian: start_bit = MSB position
-        // DBC bit numbering: bit 0 = MSB of byte 0, bit 7 = LSB of byte 0
-        // Signal extends from start_bit (MSB) to higher bit numbers (towards LSB)
-        for i in 0..bit_len {
-            // i = 0 is LSB of signal, i = bit_len - 1 is MSB
-            let dbc_bit = start_bit + (bit_len - 1 - i);
-            let byte_idx = dbc_bit / 8;
-            let bit_in_byte = 7 - (dbc_bit % 8); // DBC bit 0 = MSB = data bit 7
+        // Bit numbering: bit N = byte (N/8) bit (N%8), bit 0 = LSB of byte, bit 7 = MSB of byte
+        // Signal extraction order:
+        //   k = 0 is MSB of signal, k = bit_len-1 is LSB
+        //   In the start byte: go from start_bit_in_byte DOWN to 0 (MSB to LSB)
+        //   In subsequent bytes: go from bit 7 DOWN to 0 (MSB to LSB of each byte)
+        let start_byte = start_bit / 8;
+        let start_bit_in_byte = start_bit % 8;
+
+        for k in 0..bit_len {
+            let byte_idx: usize;
+            let bit_in_byte_pos: usize;
+
+            if k <= start_bit_in_byte {
+                // Still within the starting byte, going MSB -> LSB
+                byte_idx = start_byte;
+                bit_in_byte_pos = start_bit_in_byte - k;
+            } else {
+                // Crossed into subsequent bytes
+                let remaining_k = k - (start_bit_in_byte + 1);
+                let additional_byte = 1 + (remaining_k / 8);
+                byte_idx = start_byte + additional_byte;
+                bit_in_byte_pos = 7 - (remaining_k % 8);
+            }
+
             if byte_idx < data.len() {
-                let bit = (data[byte_idx] >> bit_in_byte) & 1;
-                raw |= (bit as u64) << i;
+                let bit = (data[byte_idx] >> bit_in_byte_pos) & 1;
+                // k=0 is MSB, shift left by (bit_len - 1 - k)
+                raw |= (bit as u64) << (bit_len - 1 - k);
             }
         }
     }
@@ -106,15 +124,28 @@ fn insert_raw_value(data: &mut [u8], sig: &DbcSignal, value: i64) {
             }
         }
     } else {
-        // Motorola / big endian
-        for i in 0..bit_len {
-            // i = 0 is LSB of signal, i = bit_len - 1 is MSB
-            let dbc_bit = start_bit + (bit_len - 1 - i);
-            let byte_idx = dbc_bit / 8;
-            let bit_in_byte = 7 - (dbc_bit % 8); // DBC bit 0 = MSB = data bit 7
+        // Motorola / big endian: same bit layout as extraction but writing
+        let start_byte = start_bit / 8;
+        let start_bit_in_byte = start_bit % 8;
+
+        for k in 0..bit_len {
+            let byte_idx: usize;
+            let bit_in_byte_pos: usize;
+
+            if k <= start_bit_in_byte {
+                byte_idx = start_byte;
+                bit_in_byte_pos = start_bit_in_byte - k;
+            } else {
+                let remaining_k = k - (start_bit_in_byte + 1);
+                let additional_byte = 1 + (remaining_k / 8);
+                byte_idx = start_byte + additional_byte;
+                bit_in_byte_pos = 7 - (remaining_k % 8);
+            }
+
             if byte_idx < data.len() {
-                let bit = ((raw >> i) & 1) as u8;
-                data[byte_idx] = (data[byte_idx] & !(1u8 << bit_in_byte)) | (bit << bit_in_byte);
+                // k=0 is MSB, take bit from (bit_len - 1 - k) position in raw
+                let bit = ((raw >> (bit_len - 1 - k)) & 1) as u8;
+                data[byte_idx] = (data[byte_idx] & !(1u8 << bit_in_byte_pos)) | (bit << bit_in_byte_pos);
             }
         }
     }

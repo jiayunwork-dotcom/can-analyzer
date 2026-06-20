@@ -28,10 +28,15 @@ export default function ChartPanel() {
     traceSignals.forEach((t) => t.points.forEach((p) => allTimestamps.add(p.timestamp)));
     const timestamps = Array.from(allTimestamps).sort((a, b) => a - b).slice(-600);
 
-    return timestamps.map((ts) => {
+    const maxTs = timestamps.length > 0 ? timestamps[timestamps.length - 1] : 0;
+    const windowStart = Math.max(0, maxTs - 30_000_000); // 最近30秒窗口（微秒）
+    const filteredTs = timestamps.filter((ts) => ts >= windowStart);
+
+    return filteredTs.map((ts) => {
+      const relativeSec = (maxTs - ts) / 1_000_000;
       const point: ChartDataPoint = {
         timestamp: ts,
-        time: ((ts % 60000000) / 1000000).toFixed(2) + 's',
+        time: `-${relativeSec.toFixed(1)}s`,
       };
       traceSignals.forEach((trace) => {
         const sigKey = `${trace.message_id}_${trace.signal_name}`;
@@ -40,7 +45,7 @@ export default function ChartPanel() {
             best === null || Math.abs(p.timestamp - ts) < Math.abs(best.timestamp - ts) ? p : best,
           null as { timestamp: number; value: number } | null
         );
-        if (nearest && Math.abs(nearest.timestamp - ts) < 500000) {
+        if (nearest && Math.abs(nearest.timestamp - ts) < 500_000) {
           point[sigKey] = nearest.value;
         }
       });
